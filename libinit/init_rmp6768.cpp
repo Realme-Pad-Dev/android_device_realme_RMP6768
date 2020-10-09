@@ -33,6 +33,8 @@
 #include <sys/sysinfo.h>
 #include <unistd.h>
 #define _REALLY_INCLUDE_SYS__SYSTEM_PROPERTIES_H_
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/_system_properties.h>
 #include <android-base/properties.h>
 #include "property_service.h"
@@ -156,15 +158,53 @@ void device_load_properties()
         property_override(string("ro.product.") + prop + string("model"), model);
         property_override(string("ro.") + prop + string("build.product"), device);
     }
+}
 
-    // Hide oem unlock
-    property_override("ro.oem_unlock_supported", "0");
+/* From Magisk@jni/magiskhide/hide_utils.c */
+static const char *snet_prop_key[] = {
+    "ro.boot.selinux",
+    "ro.boot.warranty_bit",
+    "ro.warranty_bit",
+    "ro.debuggable",
+    "ro.secure",
+    "ro.build.type",
+    "ro.build.tags",
+    "ro.build.selinux"
+    "ro.oem_unlock_supported",
+    NULL
+};
+
+static const char *snet_prop_value[] = {
+    "enforcing",
+    "0",
+    "0",
+    "0",
+    "1",
+    "user",
+    "release-keys",
+    "1",
+    "0",
+    NULL
+};
+
+static void workaround_snet_properties() {
+
+    // Hide all sensitive props
+    for (int i = 0; snet_prop_key[i]; ++i) {
+        property_override(snet_prop_key[i], snet_prop_value[i]);
+    }
+
+    chmod("/sys/fs/selinux/enforce", 0640);
+    chmod("/sys/fs/selinux/policy", 0440);
 }
 
 void vendor_load_properties()
 {
     device_load_properties();
     dalvik_load_properties();
+
+    // Workaround SafetyNet
+    workaround_snet_properties();
 
     #ifdef __ANDROID_RECOVERY__
     std::string buildtype = GetProperty("ro.build.type", "userdebug");
