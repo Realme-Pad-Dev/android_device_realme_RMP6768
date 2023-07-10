@@ -156,6 +156,9 @@ void device_load_properties()
         property_override(string("ro.product.") + prop + string("model"), model);
         property_override(string("ro.") + prop + string("build.product"), device);
     }
+
+    // Hide oem unlock
+    property_override("ro.oem_unlock_supported", "0");
 }
 
 void vendor_load_properties()
